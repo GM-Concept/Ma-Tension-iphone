@@ -9,7 +9,9 @@ const $=x=>document.getElementById(x), now=new Date(), fmt=d=>d.getFullYear()+'-
 const defs=[['a1','Mesure assise 1'],['a2','Mesure assise 2'],['a3','Mesure assise 3'],['up','Mesure debout']];
 $('forms').innerHTML=defs.map(([id,t])=>`<div class="measure"><h3>${t}</h3><div class="mg"><div><label>SYS (mmHg)</label><input id="${id}s" type="number" inputmode="numeric"></div><div><label>DIA (mmHg)</label><input id="${id}d" type="number" inputmode="numeric"></div><div><label>Pouls/min</label><input id="${id}p" type="number" inputmode="numeric"></div></div></div>`).join('');
 let db;const ready=new Promise((resolve,reject)=>{let r=indexedDB.open('MaTensionDB',1);r.onupgradeneeded=()=>{let d=r.result;d.createObjectStore('entries',{keyPath:'id'});d.createObjectStore('meta',{keyPath:'key'})};r.onsuccess=()=>{db=r.result;resolve()};r.onerror=()=>reject(r.error)});
-function req(store,method,arg){return new Promise((resolve,reject)=>{let t=db.transaction(store,method),s=t.objectStore(store),r=method==='readonly'?s[method](arg):s[method](arg);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+
+function req(store,method,arg){return new Promise((resolve,reject)=>{let mode=['put','add','delete','clear'].includes(method)?'readwrite':'readonly';let t=db.transaction(store,mode),s=t.objectStore(store),r=s[method](arg);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+
 const all=async()=>{await ready;return await req('entries','getAll')||[]}, put=async e=>{await ready;return req('entries','put',e)}, meta=async(key,value)=>{await ready;if(arguments.length){}};
 async function getMeta(k){await ready;return req('meta','get',k)}async function setMeta(k,v){await ready;return new Promise((resolve,reject)=>{let t=db.transaction('meta','readwrite');t.objectStore('meta').put({key:k,value:v});t.oncomplete=resolve;t.onerror=()=>reject(t.error)})}
 function snap(){let v={};defs.forEach(([id])=>['s','d','p'].forEach(k=>v[id+k]=$(id+k).value));return {date:$('date').value,period:$('period').value,values:v}}
