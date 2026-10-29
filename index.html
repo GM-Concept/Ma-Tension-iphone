@@ -32,15 +32,22 @@ $('csv').onclick=async()=>dl('releves-tension.csv',csv(await selected()),'text/c
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 $('pdf').onclick=async()=>{
-  if(window.__pdfReady){
-    window.print();
+  let w=window.open('about:blank','_blank');
+
+  if(!w){
+    alert('Safari a bloqué le nouvel onglet. Autorise les fenêtres surgissantes pour ce site, puis réessaie.');
     return;
   }
+
   try{
-    let es=(await all()).sort((a,b)=>a.date.localeCompare(b.date));
+    let es=await all();
     let first=$('from').value||fmt(now);
     let start=new Date(first+'T12:00:00');
-    if(isNaN(start.getTime())) throw new Error('Choisis une date de début valide.');
+
+    if(isNaN(start.getTime())){
+      w.close();
+      throw new Error('Choisis une date de début valide.');
+    }
 
     let days=[];
     for(let i=0;i<3;i++){
@@ -49,27 +56,63 @@ $('pdf').onclick=async()=>{
       days.push(fmt(d));
     }
 
-    let cells=(day,period,id,key)=>{
+    let cell=(day,period,id,key)=>{
       let e=es.find(x=>x.date===day&&x.period===period);
       let m=e&&e.measurements[id];
       return m&&m[key]!=null?esc(m[key]):'';
     };
 
-    let head=`<tr><th rowspan="2" class="rowhead">Mesure</th>${days.map((d,i)=>`<th colspan="8">Jour ${i+1} — ${d}</th>`).join('')}</tr><tr>${days.map(()=>'<th colspan="4">Matin</th><th colspan="4">Soir</th>').join('')}</tr>`;
-    let sub='<tr><th class="rowhead"></th>'+days.map(()=>['Matin','Soir'].map(()=>'<th>SYS</th><th>DIA</th><th>Pouls</th><th>Notes</th>').join('')).join('')+'</tr>';
-    let rows=defs.map(([id,label])=>`<tr><th class="rowhead">${label}</th>${days.map(d=>['Matin','Soir'].map(p=>`<td>${cells(d,p,id,'sys')}</td><td>${cells(d,p,id,'dia')}</td><td>${cells(d,p,id,'pulse')}</td><td></td>`).join('')).join('')}</tr>`).join('');
+    let html=`
+      <h1>RELEVÉ DE TENSION ARTÉRIELLE — 3 JOURS</h1>
+      <p>Nom : ____________________ &nbsp; Prénom : ____________________</p>
+      <p>Date de début : ${days[0]}</p>
+      <table>
+        <thead>
+          <tr><th>Jour / période</th>
+          ${defs.map(([,label])=>`<th>${label}<br>SYS / DIA / Pouls</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${days.map((d,i)=>['Matin','Soir'].map(p=>`
+            <tr><th>Jour ${i+1}<br>${d}<br>${p}</th>
+            ${defs.map(([id])=>`
+              <td>${cell(d,p,id,'sys')} / ${cell(d,p,id,'dia')} / ${cell(d,p,id,'pulse')}</td>
+            `).join('')}
+            </tr>
+          `).join('')).join('')}
+        </tbody>
+      </table>
+      <h3>Moyennes</h3>
+      <p>SYS : __________ &nbsp; DIA : __________ &nbsp; Pouls : __________</p>
+      <p>Les cases vides correspondent aux mesures non enregistrées.</p>
+    `;
 
-    $('pdf-print').innerHTML='';
-    let page=document.createElement('div');
-    page.className='pdf-sheet';
-    page.innerHTML=`<h1>Fiche de relevé de tension artérielle — 3 jours</h1><div class="pdf-meta"><span>Nom : __________________</span><span>Prénom : __________________</span><span>Début : ${days[0]}</span></div><table class="pdf-table">${head}${sub}${rows}</table><div class="pdf-averages"><span>Moyenne SYS : __________</span><span>Moyenne DIA : __________</span><span>Pouls moyen : __________</span></div><p class="pdf-note">Tension en mmHg · Pouls en battements/min. Les cases vides correspondent aux mesures non enregistrées.</p>`;
+    w.document.open();
+    w.document.write(`<!doctype html>
+      <html lang="fr"><head><meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Relevé de tension — 3 jours</title>
+      <style>
+        body{font:12px Arial,sans-serif;padding:16px;color:#111}
+        h1{font-size:18px;text-align:center}
+        table{width:100%;border-collapse:collapse;table-layout:fixed}
+        th,td{border:1px solid #555;padding:6px 3px;text-align:center;overflow-wrap:anywhere}
+        th{background:#eee}
+        button{padding:12px 18px;font-size:16px;margin:12px 0}
+        @media print{
+          button{display:none}
+          body{padding:0;font-size:9px}
+          h1{font-size:15px}
+          th,td{padding:4px 2px}
+        }
+      </style></head><body>
+      <button onclick="window.print()">Imprimer la fiche</button>
+      ${html}
+      </body></html>`);
+    w.document.close();
 
-    $('pdf-print').appendChild(page);
-    window.__pdfReady=true;
-    $('pdf').textContent='Fiche prête — ouvrir l’impression';
-
-    alert('La fiche est prête. Appuie une seconde fois sur le bouton « Fiche prête — ouvrir l’impression » pour ouvrir l’impression.');
   }catch(e){
+    if(!w.closed) w.close();
     alert('Impossible de préparer la fiche : '+(e.message||e));
   }
 };
