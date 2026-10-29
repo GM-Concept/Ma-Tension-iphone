@@ -30,7 +30,50 @@ function csv(es){let rows=[['Date','Période','Mesure','SYS mmHg','DIA mmHg','Po
 function dl(name,data,type){let u=URL.createObjectURL(new Blob([data],{type})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 $('csv').onclick=async()=>dl('releves-tension.csv',csv(await selected()),'text/csv;charset=utf-8');
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-$('pdf').onclick=async()=>{try{let es=(await all()).sort((a,b)=>a.date.localeCompare(b.date));let first=$('from').value||fmt(now);let start=new Date(first+'T12:00:00');if(isNaN(start.getTime()))throw new Error('Choisis une date de début valide.');let days=[];for(let i=0;i<3;i++){let d=new Date(start);d.setDate(d.getDate()+i);days.push(fmt(d))}let cells=(day,period,id,key)=>{let e=es.find(x=>x.date===day&&x.period===period),m=e&&e.measurements[id];return m&&m[key]!=null?esc(m[key]):''};let head=`<tr><th rowspan="2" class="rowhead">Mesure</th>${days.map((d,i)=>`<th colspan="8">Jour ${i+1} — ${d}</th>`).join('')}</tr><tr>${days.map(()=>'<th colspan="4">Matin</th><th colspan="4">Soir</th>').join('')}</tr>`;let sub='<tr><th class="rowhead"></th>'+days.map(()=>['Matin','Soir'].map(()=>'<th>SYS</th><th>DIA</th><th>Pouls</th><th>Notes</th>').join('')).join('')+'</tr>';let rows=defs.map(([id,label])=>`<tr><th class="rowhead">${label}</th>${days.map(d=>['Matin','Soir'].map(p=>`<td>${cells(d,p,id,'sys')}</td><td>${cells(d,p,id,'dia')}</td><td>${cells(d,p,id,'pulse')}</td><td></td>`).join('')).join('')}</tr>`).join('');$('pdf-print').innerHTML='';let page=document.createElement('div');page.className='pdf-sheet';page.innerHTML=`<h1>Fiche de relevé de tension artérielle — 3 jours</h1><div class="pdf-meta"><span>Nom : __________________</span><span>Prénom : __________________</span><span>Début : ${days[0]}</span></div><table class="pdf-table">${head}${sub}${rows}</table><div class="pdf-averages"><span>Moyenne SYS : __________</span><span>Moyenne DIA : __________</span><span>Pouls moyen : __________</span></div><p class="pdf-note">Tension en mmHg · Pouls en battements/min. Les cases vides correspondent aux mesures non enregistrées.</p>`;$('pdf-print').appendChild(page);window.print()}catch(e){alert('Impossible de préparer la fiche PDF : '+(e.message||e))}};
+
+$('pdf').onclick=async()=>{
+  if(window.__pdfReady){
+    window.print();
+    return;
+  }
+  try{
+    let es=(await all()).sort((a,b)=>a.date.localeCompare(b.date));
+    let first=$('from').value||fmt(now);
+    let start=new Date(first+'T12:00:00');
+    if(isNaN(start.getTime())) throw new Error('Choisis une date de début valide.');
+
+    let days=[];
+    for(let i=0;i<3;i++){
+      let d=new Date(start);
+      d.setDate(d.getDate()+i);
+      days.push(fmt(d));
+    }
+
+    let cells=(day,period,id,key)=>{
+      let e=es.find(x=>x.date===day&&x.period===period);
+      let m=e&&e.measurements[id];
+      return m&&m[key]!=null?esc(m[key]):'';
+    };
+
+    let head=`<tr><th rowspan="2" class="rowhead">Mesure</th>${days.map((d,i)=>`<th colspan="8">Jour ${i+1} — ${d}</th>`).join('')}</tr><tr>${days.map(()=>'<th colspan="4">Matin</th><th colspan="4">Soir</th>').join('')}</tr>`;
+    let sub='<tr><th class="rowhead"></th>'+days.map(()=>['Matin','Soir'].map(()=>'<th>SYS</th><th>DIA</th><th>Pouls</th><th>Notes</th>').join('')).join('')+'</tr>';
+    let rows=defs.map(([id,label])=>`<tr><th class="rowhead">${label}</th>${days.map(d=>['Matin','Soir'].map(p=>`<td>${cells(d,p,id,'sys')}</td><td>${cells(d,p,id,'dia')}</td><td>${cells(d,p,id,'pulse')}</td><td></td>`).join('')).join('')}</tr>`).join('');
+
+    $('pdf-print').innerHTML='';
+    let page=document.createElement('div');
+    page.className='pdf-sheet';
+    page.innerHTML=`<h1>Fiche de relevé de tension artérielle — 3 jours</h1><div class="pdf-meta"><span>Nom : __________________</span><span>Prénom : __________________</span><span>Début : ${days[0]}</span></div><table class="pdf-table">${head}${sub}${rows}</table><div class="pdf-averages"><span>Moyenne SYS : __________</span><span>Moyenne DIA : __________</span><span>Pouls moyen : __________</span></div><p class="pdf-note">Tension en mmHg · Pouls en battements/min. Les cases vides correspondent aux mesures non enregistrées.</p>`;
+
+    $('pdf-print').appendChild(page);
+    window.__pdfReady=true;
+    $('pdf').textContent='Fiche prête — ouvrir l’impression';
+
+    alert('La fiche est prête. Appuie une seconde fois sur le bouton « Fiche prête — ouvrir l’impression » pour ouvrir l’impression.');
+  }catch(e){
+    alert('Impossible de préparer la fiche : '+(e.message||e));
+  }
+};
+
 $('backup').onclick=async()=>dl('sauvegarde-ma-tension.json',JSON.stringify({entries:await all(),draft:(await getMeta('draft'))?.value||null},null,2),'application/json');$('restoreBtn').onclick=()=>$('restore').click();$('restore').onchange=async ev=>{try{let x=JSON.parse(await ev.target.files[0].text());if(!Array.isArray(x.entries))throw 0;if(confirm('Restaurer les relevés ?')){for(let e of x.entries)await put(e);if(x.draft)await setMeta('draft',x.draft);alert('Sauvegarde restaurée');render()}}catch(e){alert('Sauvegarde invalide')}ev.target.value=''};
 $('deleteAll').onclick=async()=>{if(confirm('Supprimer tout l’historique ?')){await ready;await new Promise(res=>{let t=db.transaction('entries','readwrite');t.objectStore('entries').clear();t.oncomplete=res});render()}};
 (async()=>{await ready;let d=await getMeta('draft');if(d?.value){let o=d.value;$('date').value=o.date||$('date').value;$('period').value=o.period||'Matin';Object.entries(o.values||{}).forEach(([k,v])=>{if($(k))$(k).value=v})}render()})().catch(e=>alert('Erreur au démarrage : '+(e?.name||'Erreur')+' — '+(e?.message||String(e))));
