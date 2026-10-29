@@ -1,124 +1,364 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18324a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Ma Tension"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><title>Ma Tension</title><style>
-:root{--n:#18324a;--b:#2d5d85;--bg:#f3f6f8;--l:#d8e1e8;--m:#5b6a75}*{box-sizing:border-box}body{margin:0;background:var(--bg);font:16px -apple-system,BlinkMacSystemFont,sans-serif;color:#17232d}header{background:var(--n);color:white;padding:20px 16px}h1{font-size:24px;margin:0 0 5px}header p,.hint{font-size:13px;line-height:1.45;color:var(--m)}header p{color:#e0e9ef;margin:0}main{max-width:760px;margin:auto;padding:12px}.card{background:white;border:1px solid var(--l);border-radius:14px;padding:14px;margin-bottom:12px}h2{font-size:18px;margin:0 0 12px}label{font-size:13px;color:var(--m);display:block;margin-bottom:5px}input,select{width:100%;min-width:0;border:1px solid #c8d4de;border-radius:9px;padding:11px;font:inherit;background:white}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.measure,.entry{border:1px solid var(--l);border-radius:10px;padding:11px;margin-top:10px}.measure h3{font-size:15px;margin:0 0 10px}button{border:0;border-radius:9px;background:var(--b);color:white;padding:12px;font-size:14px;font-weight:650}.alt{background:#e8eef3;color:var(--n)}.danger{background:#fbe9e8;color:#922b25}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}.small{font-size:12px;color:var(--m)}@media(max-width:440px){.grid{grid-template-columns:1fr}.mg{gap:5px}.mg input{padding:10px 5px}main{padding:9px}.card{padding:12px}}
-@media print{body{background:white;color:#111;font:10px Arial,sans-serif}header,main{display:none!important}#pdf-print{display:block!important}.pdf-sheet{page-break-after:always;padding:8mm} .pdf-sheet:last-child{page-break-after:auto} .pdf-sheet h1{font-size:18px;color:#111;margin:0 0 8px}.pdf-meta{display:flex;gap:18px;margin-bottom:10px}.pdf-meta span{border-bottom:1px solid #777;min-width:150px;padding:4px}.pdf-table{width:100%;border-collapse:collapse;table-layout:fixed}.pdf-table th,.pdf-table td{border:1px solid #555;text-align:center;padding:5px 2px}.pdf-table th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-table .rowhead{text-align:left;width:110px}.pdf-note{margin-top:10px}.pdf-averages{margin-top:12px;display:flex;gap:20px}.pdf-averages span{border-bottom:1px solid #777;min-width:130px;padding:4px}}#pdf-print{display:none}
-</style></head><body>
-<header><h1>Ma Tension</h1><p>Suivi personnel de tension artérielle<br>Enregistrement local sur cet iPhone · sans compte</p></header><main>
-<section class="card"><h2>Nouveau relevé</h2><div class="grid"><div><label>Date</label><input id="date" type="date"></div><div><label>Période</label><select id="period"><option>Matin</option><option>Soir</option></select></div></div><p class="hint">SYS et DIA en mmHg, pouls en battements/min. Le brouillon est sauvegardé automatiquement sur cet appareil.</p><div id="forms"></div><div class="actions"><button id="save">Enregistrer le relevé</button><button class="alt" id="clear">Vider les champs</button></div><p id="status" class="hint"></p></section>
-<section class="card"><h2>Moyennes et export</h2><div class="grid"><div><label>Du</label><input id="from" type="date"></div><div><label>Au</label><input id="to" type="date"></div></div><div class="actions"><button id="csv">Exporter CSV</button><button class="alt" id="pdf">Exporter fiche PDF 3 jours</button><button class="alt" id="backup">Sauvegarde JSON</button><button class="alt" id="restoreBtn">Restaurer JSON</button><input id="restore" type="file" accept=".json,application/json" hidden></div><div id="summary" class="hint"></div></section>
-<section class="card"><h2>Historique</h2><div id="history"></div><div class="actions"><button class="danger" id="deleteAll">Supprimer tout l’historique</button></div></section><section class="card"><p class="hint">Les données restent dans le navigateur sur cet appareil et ne sont pas envoyées à GitHub. Exporte régulièrement une sauvegarde : effacer les données de Safari peut supprimer les relevés. Cette application ne se synchronise pas avec Apple Santé et ne remplace pas un avis médical.</p></section></main><div id="pdf-print"></div>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#18324a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ma Tension">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>Ma Tension</title>
+<style>
+:root{--n:#18324a;--b:#2d5d85;--bg:#f3f6f8;--l:#d8e1e8;--m:#5b6a75}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font:16px -apple-system,BlinkMacSystemFont,sans-serif;color:#17232d}
+header{background:var(--n);color:white;padding:20px 16px}
+h1{font-size:24px;margin:0 0 5px}
+header p,.hint{font-size:13px;line-height:1.45;color:var(--m)}
+header p{color:#e0e9ef;margin:0}
+main{max-width:760px;margin:auto;padding:12px}
+.card{background:white;border:1px solid var(--l);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:18px;margin:0 0 12px}
+label{font-size:13px;color:var(--m);display:block;margin-bottom:5px}
+input,select{width:100%;min-width:0;border:1px solid #c8d4de;border-radius:9px;padding:11px;font:inherit;background:white}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.measure,.entry{border:1px solid var(--l);border-radius:10px;padding:11px;margin-top:10px}
+.measure h3{font-size:15px;margin:0 0 10px}
+button{border:0;border-radius:9px;background:var(--b);color:white;padding:12px;font-size:14px;font-weight:650}
+button:disabled{opacity:.55}
+.alt{background:#e8eef3;color:var(--n)}
+.danger{background:#fbe9e8;color:#922b25}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
+.small{font-size:12px;color:var(--m)}
+#pdf-print{display:none}
+.print-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.pdf-sheet{background:white;color:#111;padding:16px}
+.pdf-sheet h2{font-size:18px;text-align:center;margin:0 0 12px}
+.pdf-meta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.pdf-meta span{border-bottom:1px solid #777;padding:5px;flex:1;min-width:130px}
+.pdf-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px}
+.pdf-table th,.pdf-table td{border:1px solid #555;text-align:center;padding:6px 2px;overflow-wrap:anywhere}
+.pdf-table th{background:#eee}
+.pdf-table .rowhead{text-align:left;width:100px}
+.pdf-averages{margin-top:14px;display:flex;gap:12px;flex-wrap:wrap}
+.pdf-averages span{border-bottom:1px solid #777;padding:5px;min-width:120px;flex:1}
+.pdf-note{font-size:11px;margin-top:12px}
+@media(max-width:440px){.grid{grid-template-columns:1fr}.mg{gap:5px}.mg input{padding:10px 5px}main{padding:9px}.card{padding:12px}}
+@media print{
+  @page{size:landscape;margin:10mm}
+  body{background:white;color:#111;font:10px Arial,sans-serif}
+  header,main,.print-actions{display:none!important}
+  #pdf-print{display:block!important}
+  .pdf-sheet{padding:0}
+  .pdf-sheet h2{font-size:17px}
+  .pdf-table th,.pdf-table td{padding:5px 2px}
+}
+</style>
+</head>
+<body>
+<header><h1>Ma Tension</h1><p>Suivi personnel de tension artérielle<br>Enregistrement local sur cet iPhone · sans compte</p></header>
+<main>
+<section class="card">
+<h2>Nouveau relevé</h2>
+<div class="grid">
+<div><label for="date">Date</label><input id="date" type="date"></div>
+<div><label for="period">Période</label><select id="period"><option>Matin</option><option>Soir</option></select></div>
+</div>
+<p class="hint">SYS et DIA en mmHg, pouls en battements/min. Le brouillon est sauvegardé automatiquement sur cet appareil.</p>
+<div id="forms"></div>
+<div class="actions"><button id="save">Enregistrer le relevé</button><button class="alt" id="clear">Vider les champs</button></div>
+<p id="status" class="hint"></p>
+</section>
+<section class="card">
+<h2>Moyennes et export</h2>
+<div class="grid">
+<div><label for="from">Du</label><input id="from" type="date"></div>
+<div><label for="to">Au</label><input id="to" type="date"></div>
+</div>
+<div class="actions">
+<button id="csv">Exporter CSV</button>
+<button class="alt" id="pdf">Préparer la fiche PDF 3 jours</button>
+<button class="alt" id="backup">Sauvegarde JSON</button>
+<button class="alt" id="restoreBtn">Restaurer JSON</button>
+<input id="restore" type="file" accept=".json,application/json" hidden>
+</div>
+<div id="summary" class="hint"></div><div id="csvExportArea" class="hint" aria-live="polite"></div>
+</section>
+<section class="card"><h2>Historique</h2><div id="history"></div><div class="actions"><button class="danger" id="deleteAll">Supprimer tout l’historique</button></div></section>
+<section class="card"><p class="hint">Les données restent dans le navigateur sur cet appareil et ne sont pas envoyées à GitHub. Exporte régulièrement une sauvegarde : effacer les données de Safari peut supprimer les relevés. Cette application ne se synchronise pas avec Apple Santé et ne remplace pas un avis médical.</p></section>
+</main>
+<section id="pdf-print" aria-label="Fiche à imprimer">
+<div class="print-actions">
+<button id="printNow">Lancer l’impression</button>
+<button class="alt" id="backToApp">Retour à Ma Tension</button>
+</div>
+<div id="printContent" class="pdf-sheet"></div>
+</section>
 <script>
-const $=x=>document.getElementById(x), now=new Date(), fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');$('date').value=fmt(now);$('from').value=fmt(now);$('to').value=fmt(now);
+'use strict';
+const $=id=>document.getElementById(id);
+const now=new Date();
+const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+$('date').value=fmt(now);$('from').value=fmt(now);$('to').value=fmt(now);
 const defs=[['a1','Mesure assise 1'],['a2','Mesure assise 2'],['a3','Mesure assise 3'],['up','Mesure debout']];
-$('forms').innerHTML=defs.map(([id,t])=>`<div class="measure"><h3>${t}</h3><div class="mg"><div><label>SYS (mmHg)</label><input id="${id}s" type="number" inputmode="numeric"></div><div><label>DIA (mmHg)</label><input id="${id}d" type="number" inputmode="numeric"></div><div><label>Pouls/min</label><input id="${id}p" type="number" inputmode="numeric"></div></div></div>`).join('');
-let db;const ready=new Promise((resolve,reject)=>{let r=indexedDB.open('MaTensionDB',1);r.onupgradeneeded=()=>{let d=r.result;d.createObjectStore('entries',{keyPath:'id'});d.createObjectStore('meta',{keyPath:'key'})};r.onsuccess=()=>{db=r.result;resolve()};r.onerror=()=>reject(r.error)});
+$('forms').innerHTML=defs.map(([id,title])=>`<div class="measure"><h3>${title}</h3><div class="mg"><div><label for="${id}s">SYS (mmHg)</label><input id="${id}s" type="number" inputmode="numeric"></div><div><label for="${id}d">DIA (mmHg)</label><input id="${id}d" type="number" inputmode="numeric"></div><div><label for="${id}p">Pouls/min</label><input id="${id}p" type="number" inputmode="numeric"></div></div></div>`).join('');
 
-function req(store,method,arg){return new Promise((resolve,reject)=>{let mode=['put','add','delete','clear'].includes(method)?'readwrite':'readonly';let t=db.transaction(store,mode),s=t.objectStore(store),r=s[method](arg);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-
-const all=async()=>{await ready;return await req('entries','getAll')||[]}, put=async e=>{await ready;return req('entries','put',e)}, meta=async(key,value)=>{await ready;if(arguments.length){}};
-async function getMeta(k){await ready;return req('meta','get',k)}async function setMeta(k,v){await ready;return new Promise((resolve,reject)=>{let t=db.transaction('meta','readwrite');t.objectStore('meta').put({key:k,value:v});t.oncomplete=resolve;t.onerror=()=>reject(t.error)})}
-function snap(){let v={};defs.forEach(([id])=>['s','d','p'].forEach(k=>v[id+k]=$(id+k).value));return {date:$('date').value,period:$('period').value,values:v}}
-async function draft(){try{await setMeta('draft',snap());$('status').textContent='Brouillon sauvegardé sur cet appareil.'}catch(e){$('status').textContent='Sauvegarde indisponible dans ce navigateur.'}}
-document.querySelectorAll('#forms input,#date,#period').forEach(x=>x.addEventListener('input',draft));
-function make(){let ms={};for(let [id,title] of defs){let s=$(id+'s').value,d=$(id+'d').value,p=$(id+'p').value;if(s||d||p){if(!s||!d)return {error:'Complète SYS et DIA pour '+title+' ou laisse les champs vides.'};ms[id]={sys:+s,dia:+d,pulse:p===''?null:+p}}}if(!Object.keys(ms).length)return {error:'Saisis au moins une mesure.'};return {id:$('date').value+'_'+$('period').value,date:$('date').value,period:$('period').value,measurements:ms}}
-async function selected(){return (await all()).filter(e=>e.date>=$('from').value&&e.date<=$('to').value)}
-function avg(a){a=a.filter(Number.isFinite);return a.length?(a.reduce((s,v)=>s+v,0)/a.length).toFixed(1):'—'}
-async function render(){let es=(await all()).sort((a,b)=>b.date.localeCompare(a.date));$('history').innerHTML=es.length?es.map(e=>`<div class="entry"><strong>${e.date} · ${e.period}</strong><p class="small">${defs.filter(d=>e.measurements[d[0]]).map(([id,t])=>t+': '+e.measurements[id].sys+'/'+e.measurements[id].dia+(e.measurements[id].pulse!==null?', pouls '+e.measurements[id].pulse:'')).join(' · ')}</p><button class="danger" data-id="${e.id}">Supprimer</button></div>`).join(''):'<p class="hint">Aucun relevé.</p>';document.querySelectorAll('[data-id]').forEach(b=>b.onclick=async()=>{if(confirm('Supprimer ce relevé ?')){await ready;await new Promise(res=>{let t=db.transaction('entries','readwrite');t.objectStore('entries').delete(b.dataset.id);t.oncomplete=res});render()}});let chosen=await selected(),m=[];chosen.forEach(e=>defs.forEach(([id])=>{if(id!=='up'&&e.measurements[id])m.push(e.measurements[id])}));$('summary').innerHTML=`<div class="grid"><div class="measure">SYS moyen assis<h2>${avg(m.map(x=>x.sys))} mmHg</h2></div><div class="measure">DIA moyenne assise<h2>${avg(m.map(x=>x.dia))} mmHg</h2></div><div class="measure">Pouls moyen<h2>${avg(m.map(x=>x.pulse).filter(x=>x!==null))} /min</h2></div><div class="measure">Relevés<h2>${chosen.length}</h2></div></div>`}
-$('save').onclick=async()=>{let e=make();if(e.error){$('status').textContent=e.error;alert(e.error);return}let b=$('save');b.disabled=true;$('status').textContent='Enregistrement en cours…';try{await put(e);await render();await draft();$('status').textContent='Relevé enregistré sur cet appareil.'}catch(err){let msg='Échec de l’enregistrement : '+(err&&err.message?err.message:String(err));$('status').textContent=msg;alert(msg)}finally{b.disabled=false}};$('clear').onclick=async()=>{if(confirm('Vider les champs ?')){document.querySelectorAll('#forms input').forEach(x=>x.value='');draft()}};
-function avg(a){a=a.filter(Number.isFinite);return a.length?(a.reduce((s,v)=>s+v,0)/a.length).toFixed(1):'—'}
-async function render(){let es=(await all()).sort((a,b)=>b.date.localeCompare(a.date));$('history').innerHTML=es.length?es.map(e=>`<div class="entry"><strong>${e.date} · ${e.period}</strong><p class="small">${defs.filter(d=>e.measurements[d[0]]).map(([id,t])=>t+': '+e.measurements[id].sys+'/'+e.measurements[id].dia+(e.measurements[id].pulse!==null?', pouls '+e.measurements[id].pulse:'')).join(' · ')}</p><button class="danger" data-id="${e.id}">Supprimer</button></div>`).join(''):'<p class="hint">Aucun relevé.</p>';document.querySelectorAll('[data-id]').forEach(b=>b.onclick=async()=>{if(confirm('Supprimer ce relevé ?')){await ready;await new Promise(res=>{let t=db.transaction('entries','readwrite');t.objectStore('entries').delete(b.dataset.id);t.oncomplete=res});render()}});let chosen=await selected(),m=[];chosen.forEach(e=>defs.forEach(([id])=>{if(id!=='up'&&e.measurements[id])m.push(e.measurements[id])}));$('summary').innerHTML=`<div class="grid"><div class="measure">SYS moyen assis<h2>${avg(m.map(x=>x.sys))} mmHg</h2></div><div class="measure">DIA moyenne assise<h2>${avg(m.map(x=>x.dia))} mmHg</h2></div><div class="measure">Pouls moyen<h2>${avg(m.map(x=>x.pulse).filter(x=>x!==null))} /min</h2></div><div class="measure">Relevés<h2>${chosen.length}</h2></div></div>`}
-function csv(es){let rows=[['Date','Période','Mesure','SYS mmHg','DIA mmHg','Pouls/min']];es.forEach(e=>defs.forEach(([id,t])=>{let m=e.measurements[id];if(m)rows.push([e.date,e.period,t,m.sys,m.dia,m.pulse??''])}));return '\ufeff'+rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(';')).join('\r\n')}
-function dl(name,data,type){let u=URL.createObjectURL(new Blob([data],{type})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
-$('csv').onclick=async()=>dl('releves-tension.csv',csv(await selected()),'text/csv;charset=utf-8');
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-
-$('pdf').onclick=async()=>{
-  let w=window.open('about:blank','_blank');
-
-  if(!w){
-    alert('Safari a bloqué le nouvel onglet. Autorise les fenêtres surgissantes pour ce site, puis réessaie.');
-    return;
+let db;
+const ready=new Promise((resolve,reject)=>{
+  const request=indexedDB.open('MaTensionDB',1);
+  request.onupgradeneeded=()=>{
+    const database=request.result;
+    if(!database.objectStoreNames.contains('entries'))database.createObjectStore('entries',{keyPath:'id'});
+    if(!database.objectStoreNames.contains('meta'))database.createObjectStore('meta',{keyPath:'key'});
+  };
+  request.onsuccess=()=>{db=request.result;resolve()};
+  request.onerror=()=>reject(request.error);
+});
+function requestStore(store,method,arg){
+  return new Promise((resolve,reject)=>{
+    const mode=['put','add','delete','clear'].includes(method)?'readwrite':'readonly';
+    const tx=db.transaction(store,mode);
+    const req=arg===undefined?tx.objectStore(store)[method]():tx.objectStore(store)[method](arg);
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function all(){await ready;return (await requestStore('entries','getAll'))||[]}
+async function putEntry(entry){await ready;return requestStore('entries','put',entry)}
+async function getMeta(key){await ready;return requestStore('meta','get',key)}
+async function setMeta(key,value){
+  await ready;
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('meta','readwrite');
+    tx.objectStore('meta').put({key,value});
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+  });
+}
+function snapshot(){
+  const values={};
+  defs.forEach(([id])=>['s','d','p'].forEach(k=>values[id+k]=$(id+k).value));
+  return {date:$('date').value,period:$('period').value,values};
+}
+async function saveDraft(){
+  try{await setMeta('draft',snapshot());$('status').textContent='Brouillon sauvegardé sur cet appareil.'}
+  catch(e){$('status').textContent='Sauvegarde indisponible dans ce navigateur.'}
+}
+document.querySelectorAll('#forms input,#date,#period').forEach(el=>el.addEventListener('input',saveDraft));
+function makeEntry(){
+  const measurements={};
+  for(const [id,title] of defs){
+    const sys=$(id+'s').value,dia=$(id+'d').value,pulse=$(id+'p').value;
+    if(sys||dia||pulse){
+      if(!sys||!dia)return {error:'Complète SYS et DIA pour '+title+' ou laisse les champs vides.'};
+      measurements[id]={sys:Number(sys),dia:Number(dia),pulse:pulse===''?null:Number(pulse)};
+    }
   }
-
+  if(!Object.keys(measurements).length)return {error:'Saisis au moins une mesure.'};
+  if(!$('date').value)return {error:'Choisis une date.'};
+  return {id:$('date').value+'_'+$('period').value,date:$('date').value,period:$('period').value,measurements};
+}
+async function selectedEntries(){
+  const from=$('from').value,to=$('to').value;
+  return (await all()).filter(e=>(!from||e.date>=from)&&(!to||e.date<=to));
+}
+function average(values){
+  const valid=values.filter(v=>Number.isFinite(v));
+  return valid.length?(valid.reduce((sum,v)=>sum+v,0)/valid.length).toFixed(1):'—';
+}
+async function render(){
+  const entries=(await all()).sort((a,b)=>b.date.localeCompare(a.date));
+  $('history').innerHTML=entries.length?entries.map(e=>{
+    const details=defs.filter(([id])=>e.measurements&&e.measurements[id]).map(([id,title])=>{
+      const m=e.measurements[id];
+      return title+': '+m.sys+'/'+m.dia+(m.pulse!==null?', pouls '+m.pulse:'');
+    }).join(' · ');
+    return `<div class="entry"><strong>${e.date} · ${e.period}</strong><p class="small">${details}</p><button class="danger" data-id="${String(e.id).replace(/"/g,'&quot;')}">Supprimer</button></div>`;
+  }).join(''):'<p class="hint">Aucun relevé.</p>';
+  document.querySelectorAll('#history [data-id]').forEach(button=>button.addEventListener('click',async()=>{
+    if(!confirm('Supprimer ce relevé ?'))return;
+    await ready;
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction('entries','readwrite');
+      tx.objectStore('entries').delete(button.dataset.id);
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+    });
+    await render();
+  }));
+  const chosen=await selectedEntries(),seated=[];
+  chosen.forEach(e=>defs.forEach(([id])=>{if(id!=='up'&&e.measurements&&e.measurements[id])seated.push(e.measurements[id])}));
+  $('summary').innerHTML=`<div class="grid"><div class="measure">SYS moyen assis<h2>${average(seated.map(m=>m.sys))} mmHg</h2></div><div class="measure">DIA moyenne assise<h2>${average(seated.map(m=>m.dia))} mmHg</h2></div><div class="measure">Pouls moyen<h2>${average(seated.map(m=>m.pulse).filter(v=>v!==null))} /min</h2></div><div class="measure">Relevés<h2>${chosen.length}</h2></div></div>`;
+}
+$('save').addEventListener('click',async()=>{
+  const entry=makeEntry();
+  if(entry.error){$('status').textContent=entry.error;alert(entry.error);return}
+  const button=$('save');button.disabled=true;$('status').textContent='Enregistrement en cours…';
+  try{await putEntry(entry);await render();await saveDraft();$('status').textContent='Relevé enregistré sur cet appareil.'}
+  catch(error){const message='Échec de l’enregistrement : '+(error.message||String(error));$('status').textContent=message;alert(message)}
+  finally{button.disabled=false}
+});
+$('clear').addEventListener('click',async()=>{
+  if(!confirm('Vider les champs ?'))return;
+  document.querySelectorAll('#forms input').forEach(input=>input.value='');
+  await saveDraft();
+});
+function csv(entries){
+  const rows=[['Date','Période','Mesure','SYS mmHg','DIA mmHg','Pouls/min']];
+  entries.forEach(e=>defs.forEach(([id,title])=>{
+    const m=e.measurements&&e.measurements[id];
+    if(m)rows.push([e.date,e.period,title,m.sys,m.dia,m.pulse??'']);
+  }));
+  return '\ufeff'+rows.map(row=>row.map(value=>'"'+String(value).replaceAll('"','""')+'"').join(';')).join('\r\n');
+}
+function downloadFile(name,data,type){
+  const url=URL.createObjectURL(new Blob([data],{type}));
+  const link=document.createElement('a');link.href=url;link.download=name;
+  document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+let csvObjectUrl=null;
+$('csv').addEventListener('click',async()=>{
+  const button=$('csv');
+  const area=$('csvExportArea');
+  button.disabled=true;
+  area.textContent='Préparation du fichier CSV…';
   try{
-    let es=await all();
-    let first=$('from').value||fmt(now);
-    let start=new Date(first+'T12:00:00');
-
-    if(isNaN(start.getTime())){
-      w.close();
-      throw new Error('Choisis une date de début valide.');
-    }
-
-    let days=[];
-    for(let i=0;i<3;i++){
-      let d=new Date(start);
-      d.setDate(d.getDate()+i);
-      days.push(fmt(d));
-    }
-
-    let cell=(day,period,id,key)=>{
-      let e=es.find(x=>x.date===day&&x.period===period);
-      let m=e&&e.measurements[id];
-      return m&&m[key]!=null?esc(m[key]):'';
-    };
-
-    let html=`
-      <h1>RELEVÉ DE TENSION ARTÉRIELLE — 3 JOURS</h1>
-      <p>Nom : ____________________ &nbsp; Prénom : ____________________</p>
-      <p>Date de début : ${days[0]}</p>
-      <table>
-        <thead>
-          <tr><th>Jour / période</th>
-          ${defs.map(([,label])=>`<th>${label}<br>SYS / DIA / Pouls</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${days.map((d,i)=>['Matin','Soir'].map(p=>`
-            <tr><th>Jour ${i+1}<br>${d}<br>${p}</th>
-            ${defs.map(([id])=>`
-              <td>${cell(d,p,id,'sys')} / ${cell(d,p,id,'dia')} / ${cell(d,p,id,'pulse')}</td>
-            `).join('')}
-            </tr>
-          `).join('')).join('')}
-        </tbody>
-      </table>
-      <h3>Moyennes</h3>
-      <p>SYS : __________ &nbsp; DIA : __________ &nbsp; Pouls : __________</p>
-      <p>Les cases vides correspondent aux mesures non enregistrées.</p>
-    `;
-
-    w.document.open();
-    w.document.write(`<!doctype html>
-      <html lang="fr"><head><meta charset="utf-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      <title>Relevé de tension — 3 jours</title>
-      <style>
-        body{font:12px Arial,sans-serif;padding:16px;color:#111}
-        h1{font-size:18px;text-align:center}
-        table{width:100%;border-collapse:collapse;table-layout:fixed}
-        th,td{border:1px solid #555;padding:6px 3px;text-align:center;overflow-wrap:anywhere}
-        th{background:#eee}
-        button{padding:12px 18px;font-size:16px;margin:12px 0}
-        @media print{
-          button{display:none}
-          body{padding:0;font-size:9px}
-          h1{font-size:15px}
-          th,td{padding:4px 2px}
+    const entries=await selectedEntries();
+    const csvText=csv(entries);
+    const fileName='releves-tension.csv';
+    const blob=new Blob([csvText],{type:'text/csv;charset=utf-8'});
+    const file=new File([blob],fileName,{type:'text/csv;charset=utf-8'});
+    // Sur iPhone/iPad, proposer la feuille de partage native est plus fiable
+    // qu'un téléchargement automatique déclenché par un lien temporaire.
+    if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+      try{
+        await navigator.share({files:[file],title:'Relevés de tension',text:'Export des relevés de tension'});
+        area.textContent='Fichier CSV partagé.';
+        return;
+      }catch(shareError){
+        if(shareError && shareError.name==='AbortError'){
+          area.textContent='Partage annulé. Tu peux utiliser le lien de téléchargement ci-dessous.';
+        }else{
+          area.textContent='Le partage n’a pas abouti. Utilise le lien de téléchargement ci-dessous.';
         }
-      </style></head><body>
-      <button onclick="window.print()">Imprimer la fiche</button>
-      ${html}
-      </body></html>`);
-    w.document.close();
-
-  }catch(e){
-    if(!w.closed) w.close();
-    alert('Impossible de préparer la fiche : '+(e.message||e));
+      }
+    }else{
+      area.textContent='Le partage direct n’est pas disponible dans ce navigateur. Utilise le lien ci-dessous.';
+    }
+    if(csvObjectUrl)URL.revokeObjectURL(csvObjectUrl);
+    csvObjectUrl=URL.createObjectURL(blob);
+    area.innerHTML='<p>Ton fichier CSV est prêt. Touche le lien ci-dessous pour l’ouvrir ou l’enregistrer.</p><a id="csvDownloadLink" href="'+csvObjectUrl+'" download="'+fileName+'" style="display:inline-block;padding:12px 14px;background:#2d5d85;color:white;border-radius:9px;text-decoration:none;font-weight:650">Télécharger les relevés CSV</a>';
+    $('csvDownloadLink').addEventListener('click',()=>{
+      area.insertAdjacentHTML('beforeend','<p>Si le fichier s’ouvre dans Safari, utilise le bouton Partager puis « Enregistrer dans Fichiers ».</p>');
+    },{once:true});
+  }catch(error){
+    area.textContent='Export CSV impossible : '+(error.message||String(error));
+    alert('Export CSV impossible : '+(error.message||String(error)));
+  }finally{
+    button.disabled=false;
   }
-};
-
-$('backup').onclick=async()=>dl('sauvegarde-ma-tension.json',JSON.stringify({entries:await all(),draft:(await getMeta('draft'))?.value||null},null,2),'application/json');$('restoreBtn').onclick=()=>$('restore').click();$('restore').onchange=async ev=>{try{let x=JSON.parse(await ev.target.files[0].text());if(!Array.isArray(x.entries))throw 0;if(confirm('Restaurer les relevés ?')){for(let e of x.entries)await put(e);if(x.draft)await setMeta('draft',x.draft);alert('Sauvegarde restaurée');render()}}catch(e){alert('Sauvegarde invalide')}ev.target.value=''};
-$('deleteAll').onclick=async()=>{if(confirm('Supprimer tout l’historique ?')){await ready;await new Promise(res=>{let t=db.transaction('entries','readwrite');t.objectStore('entries').clear();t.oncomplete=res});render()}};
-(async()=>{await ready;let d=await getMeta('draft');if(d?.value){let o=d.value;$('date').value=o.date||$('date').value;$('period').value=o.period||'Matin';Object.entries(o.values||{}).forEach(([k,v])=>{if($(k))$(k).value=v})}render()})().catch(e=>alert('Erreur au démarrage : '+(e?.name||'Erreur')+' — '+(e?.message||String(e))));
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-</script></body></html>
+});
+function esc(value){
+  return String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+}
+function dateFromISO(value){
+  const parts=value.split('-').map(Number);
+  return new Date(parts[0],parts[1]-1,parts[2],12);
+}
+function buildPrintSheet(entries){
+  const first=$('from').value||fmt(now);
+  const start=dateFromISO(first);
+  if(Number.isNaN(start.getTime()))throw new Error('Choisis une date de début valide.');
+  const days=[];
+  for(let i=0;i<3;i++){const date=new Date(start);date.setDate(date.getDate()+i);days.push(fmt(date))}
+  const findMeasurement=(day,period,id)=>{
+    const entry=entries.find(e=>e.date===day&&e.period===period);
+    return entry&&entry.measurements?entry.measurements[id]:null;
+  };
+  const header=`<tr><th rowspan="2" class="rowhead">Mesure</th>${days.map((day,i)=>`<th colspan="8">Jour ${i+1} — ${day}</th>`).join('')}</tr><tr>${days.map(()=>'<th colspan="4">Matin</th><th colspan="4">Soir</th>').join('')}</tr>`;
+  const subheader='<tr><th class="rowhead"></th>'+days.map(()=>['Matin','Soir'].map(()=>'<th>SYS</th><th>DIA</th><th>Pouls</th><th>Notes</th>').join('')).join('')+'</tr>';
+  const rows=defs.map(([id,label])=>`<tr><th class="rowhead">${esc(label)}</th>${days.map(day=>['Matin','Soir'].map(period=>{
+    const m=findMeasurement(day,period,id);
+    return `<td>${m?esc(m.sys):''}</td><td>${m?esc(m.dia):''}</td><td>${m&&m.pulse!==null?esc(m.pulse):''}</td><td></td>`;
+  }).join('')).join('')}</tr>`).join('');
+  const seated=[];
+  days.forEach(day=>['Matin','Soir'].forEach(period=>['a1','a2','a3'].forEach(id=>{
+    const m=findMeasurement(day,period,id);if(m)seated.push(m);
+  })));
+  const meanSys=average(seated.map(m=>m.sys)),meanDia=average(seated.map(m=>m.dia));
+  const meanPulse=average(seated.map(m=>m.pulse).filter(v=>v!==null));
+  $('printContent').innerHTML=`
+    <h2>RELEVÉ DE TENSION ARTÉRIELLE — 3 JOURS CONSÉCUTIFS</h2>
+    <div class="pdf-meta"><span>Nom : MORIN</span><span>Prénom : Gilles</span><span>Date de début : ${days[0]}</span></div>
+    <table class="pdf-table">${header}${subheader}${rows}</table>
+    <div class="pdf-averages"><span>Moyenne SYS assis : ${meanSys} mmHg</span><span>Moyenne DIA assis : ${meanDia} mmHg</span><span>Pouls moyen : ${meanPulse} /min</span></div>
+    <p class="pdf-note">Tension en mmHg · Pouls en battements/min. Les cases vides correspondent aux mesures non enregistrées.</p>`;
+}
+$('pdf').addEventListener('click',async()=>{
+  const button=$('pdf');button.disabled=true;
+  try{
+    const entries=await all();
+    buildPrintSheet(entries);
+    $('pdf-print').style.display='block';
+    $('pdf-print').scrollIntoView({behavior:'auto',block:'start'});
+    $('status').textContent='Fiche préparée. Appuie sur « Lancer l’impression » ou utilise Partager > Imprimer dans Safari.';
+  }catch(error){alert('Impossible de préparer la fiche : '+(error.message||error))}
+  finally{button.disabled=false}
+});
+$('printNow').addEventListener('click',()=>{
+  // Appel direct depuis le geste de l'utilisateur : pas de fenêtre secondaire ni d'attente asynchrone.
+  window.print();
+});
+$('backToApp').addEventListener('click',()=>{
+  $('pdf-print').style.display='none';
+  window.scrollTo({top:0,behavior:'auto'});
+});
+$('backup').addEventListener('click',async()=>{
+  try{downloadFile('sauvegarde-ma-tension.json',JSON.stringify({entries:await all(),draft:(await getMeta('draft'))?.value||null},null,2),'application/json')}
+  catch(e){alert('Sauvegarde impossible : '+(e.message||e))}
+});
+$('restoreBtn').addEventListener('click',()=>$('restore').click());
+$('restore').addEventListener('change',async event=>{
+  try{
+    const file=event.target.files&&event.target.files[0];if(!file)return;
+    const backup=JSON.parse(await file.text());
+    if(!Array.isArray(backup.entries))throw new Error('Fichier JSON non reconnu.');
+    if(confirm('Restaurer les relevés de cette sauvegarde ?')){
+      for(const entry of backup.entries)await putEntry(entry);
+      if(backup.draft)await setMeta('draft',backup.draft);
+      alert('Sauvegarde restaurée.');await render();
+    }
+  }catch(error){alert('Sauvegarde invalide : '+(error.message||error))}
+  finally{event.target.value=''}
+});
+$('deleteAll').addEventListener('click',async()=>{
+  if(!confirm('Supprimer tout l’historique ? Cette action est définitive.'))return;
+  try{
+    await ready;
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction('entries','readwrite');tx.objectStore('entries').clear();
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+    });
+    await render();
+  }catch(error){alert('Suppression impossible : '+(error.message||error))}
+});
+(async()=>{
+  try{
+    await ready;
+    const draft=await getMeta('draft');
+    if(draft&&draft.value){
+      const saved=draft.value;
+      $('date').value=saved.date||$('date').value;
+      $('period').value=saved.period||'Matin';
+      Object.entries(saved.values||{}).forEach(([key,value])=>{if($(key))$(key).value=value});
+    }
+    await render();
+  }catch(error){alert('Erreur au démarrage : '+(error.name||'Erreur')+' — '+(error.message||String(error)))}
+})();
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
